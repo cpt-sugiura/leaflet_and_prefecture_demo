@@ -1,0 +1,119 @@
+<html>
+<head>
+  <title>Leaflet demo</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <script type="text/javascript"
+          src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+  <link rel="stylesheet" type="text/css"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css">
+
+  <style id="compiled-css">
+      #map {
+          height: 500px;
+          width: 80%;
+      }
+
+      /* EOS */
+  </style>
+</head>
+<body>
+<h3>多角形の内側にのみマーカーを置けます</h3>
+<div id="map"></div>
+<!-- GeoJSON -->
+<script id="shizuoka" type="text/javascript" src="pref/N03-19_22_190101.geojson"></script>
+<script type="text/javascript">//<![CDATA[
+const nakaku  = shizuokaGeoJSON.features
+  .filter(node=>node.properties.N03_003 === '浜松市')
+  .filter(node=>node.properties.N03_004 === '中区')[0]
+  .geometry.coordinates[0].map(lngLat => [lngLat[1], lngLat[0]])
+;
+const hamamatsu  = shizuokaGeoJSON.features
+  .filter(node=>node.properties.N03_003 === '浜松市')
+  .reduce((hamamatsu, ku) => hamamatsu.concat(ku.geometry.coordinates[0].map(lngLat => [lngLat[1], lngLat[0]])),[])
+
+;
+
+// 地図
+const osmUrl = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png';
+const osmAttrib = '&copy; <a href="http://openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const osm = L.tileLayer(osmUrl, {
+  maxZoom: 18,
+  attribution: osmAttrib,
+});
+// 初期化
+const map = L.map('map').setView([34.6982856, 137.6999814], 12).addLayer(osm);
+
+// 2点から四角になる様に4点の座標配列を生成
+const makeBox = (x1, y1, x2, y2) => {
+  return [
+    [x1, y1],
+    [x1, y2],
+    [x2, y2],
+    [x2, y1],
+  ];
+};
+// 領域セット
+const polygonInnerLatLngList = hamamatsu;
+const polygonLatLngList = [makeBox(-90, -180, 90, 180), polygonInnerLatLngList];
+
+L.polygon(polygonLatLngList, {
+  color: 'black',
+  opacity: 0,
+  fillOpacity: 0.6,
+}).addTo(map);
+
+// マーカーセット
+let marker;
+const onMapClick = (e) => {
+  if (!isInsideByCrossingNumberAlgorithm([e.latlng.lat, e.latlng.lng], polygonInnerLatLngList)) {
+    return;
+  }
+  if (marker) {
+    marker.remove(); // 既存のマーカーがあれば入れ替え
+  }
+  marker = L.marker(e.latlng).addTo(map).bindPopup(e.latlng.toString()).openPopup();
+};
+
+map.on('click', onMapClick);
+
+/**
+ * 点が多角形の内にあるならば true
+ * @param {[Number, Number]} point
+ * @param {[Number, Number][]} polygon
+ * @return {boolean}
+ */
+function isInsideByCrossingNumberAlgorithm(point, polygon) {
+  const x = point[0];
+  const y = point[1];
+
+  let crossCount = 0;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    // 多角形を成す辺を全て調査する
+    // 現在の index の多角形の点X, Y
+    const polCX = polygon[i][0];
+    const polCY = polygon[i][1];
+    // 次の index の多角形の点X, Y
+    const polNX = polygon[j][0];
+    const polNY = polygon[j][1];
+
+    if (polCY > y === polNY > y) {
+      // 点が辺の完全に上 or 完全に下ならば. ノーカウントでループ続行
+      continue;
+    }
+
+    // 辺が点pと同じ高さになる位置を特定し、その時のxの値と点pのxの値を比較する
+    // 同じ高さになる時の辺の割合 = (点Y - 始点Y座標)) / 辺のY軸長さ
+    const vt = (y - polCY) / (polNY - polCY);
+    // 点のX座標 < 辺のX軸長さ * 同じ高さになる時の辺の割合 + 始点X座標
+    if (x < (polNX - polCX) * vt + polCX) {
+      crossCount++;
+    }
+  }
+
+  return crossCount % 2 === 1;
+}
+
+
+//]]></script>
+</body>
+</html>
