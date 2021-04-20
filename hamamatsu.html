@@ -25,15 +25,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@5/turf.min.js"></script>
 <script type="text/javascript">//<![CDATA[
 
-const shizuoka = shizuokaGeoJSON.features
-  .reduce((shizuoka, ku) => {// reduce で一つずつ和集合を抽出
-      if(shizuoka === null){
+const hamamatsu = shizuokaGeoJSON.features
+  .filter(node => node.properties.N03_003 === '浜松市')// 浜松市内の区のみを抽出
+  .reduce((hamamatsu, ku) => {// reduce で一つずつ和集合を抽出
+      if(hamamatsu === null){
         // 最初の一つはそれのみで完結していため turf に通しておしまい。
         return turf.polygon([ku.geometry.coordinates[0]])
       }
       // 二つ目以降は turf で和集合を計算
       return turf.union(
-        shizuoka,
+        hamamatsu,
         turf.polygon([ku.geometry.coordinates[0]])
       )
     },
@@ -61,7 +62,7 @@ const makeBox = (x1, y1, x2, y2) => {
   ];
 };
 // 領域セット
-const polygonInnerLatLngList = shizuoka;
+const polygonInnerLatLngList = hamamatsu;
 const polygonLatLngList = [makeBox(-90, -180, 90, 180), polygonInnerLatLngList];
 
 L.polygon(polygonLatLngList, {

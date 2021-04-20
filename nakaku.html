@@ -17,29 +17,15 @@
   </style>
 </head>
 <body>
-<h3>静岡県浜松市の内側にのみマーカーを置けます</h3>
+<h3>静岡県浜松市中区の内側にのみマーカーを置けます</h3>
 <div id="map"></div>
 <!-- GeoJSON -->
-<script id="shizuoka" type="text/javascript"
-        src="pref/N03-19_22_190101.geojson"></script>
-<script src="https://cdn.jsdelivr.net/npm/@turf/turf@5/turf.min.js"></script>
+<script id="shizuoka" type="text/javascript" src="pref/N03-19_22_190101.geojson"></script>
 <script type="text/javascript">//<![CDATA[
-
-const shizuoka = shizuokaGeoJSON.features
-  .reduce((shizuoka, ku) => {// reduce で一つずつ和集合を抽出
-      if(shizuoka === null){
-        // 最初の一つはそれのみで完結していため turf に通しておしまい。
-        return turf.polygon([ku.geometry.coordinates[0]])
-      }
-      // 二つ目以降は turf で和集合を計算
-      return turf.union(
-        shizuoka,
-        turf.polygon([ku.geometry.coordinates[0]])
-      )
-    },
-    null
-  ).geometry.coordinates[0].map(lngLat => [lngLat[1], lngLat[0]])// leaflet に渡せる形式に抜き出し
-;
+const nakaku  = shizuokaGeoJSON.features
+  .filter(node=>node.properties.N03_003 === '浜松市')
+  .filter(node=>node.properties.N03_004 === '中区')[0]
+  .geometry.coordinates[0].map(lngLat => [lngLat[1], lngLat[0]]);
 
 // 地図
 const osmUrl = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png';
@@ -49,7 +35,7 @@ const osm = L.tileLayer(osmUrl, {
   attribution: osmAttrib,
 });
 // 初期化
-const map = L.map('map').setView([34.9582856, 137.6999814], 9).addLayer(osm);
+const map = L.map('map').setView([34.6982856, 137.6999814], 12).addLayer(osm);
 
 // 2点から四角になる様に4点の座標配列を生成
 const makeBox = (x1, y1, x2, y2) => {
@@ -61,7 +47,7 @@ const makeBox = (x1, y1, x2, y2) => {
   ];
 };
 // 領域セット
-const polygonInnerLatLngList = shizuoka;
+const polygonInnerLatLngList = nakaku;
 const polygonLatLngList = [makeBox(-90, -180, 90, 180), polygonInnerLatLngList];
 
 L.polygon(polygonLatLngList, {
